@@ -9,6 +9,8 @@ This repository is part of my data analytics portfolio.
 - GitHub setup completed
 - Day 2: Visual Studio Code and Github Connecting
 - Raw data Setup and Visual Studio Code Connectiong
+- Day 3: Python, JupyterNotebook and SQL Server Set
+- Raw data Modifying by using tools and suspect roadmap
 
 ## Planned Contents
 - Data description
