@@ -1,21 +1,52 @@
-# Data-Analysis
-Python / Demand Forecasting w. ARIMA, RandomForest, xGboost
+# Passenger Demand Forecasting & Route Capacity Optimization
+> **여객 수요 예측 기반의 노선별 공급 최적화 및 탑승률(L/F) 분석 프로젝트**
 
-# Project Overview
-This repository is part of my data analytics portfolio.
+## 1. 프로젝트 개요 (Project Overview)
+본 프로젝트는 항공 운항/여객 실적 데이터를 활용하여 특정 노선의 **탑승률(Load Factor, L/F)**을 예측하고, 한정된 항공기 자원을 효율적으로 배분하기 위한 데이터 기반의 의사결정 프레임워크를 구축하는 것을 목표로 합니다.
 
-## Status
-- Day 1: Repository initialized
-- GitHub setup completed
-- Day 2: Visual Studio Code and Github Connecting
-- Raw data Setup and Visual Studio Code Connectiong
-- Day 3: Python, JupyterNotebook and SQL Server Set
-- Raw data Modifying by using tools and suspect roadmap
+### 문제 정의 및 분석 타깃(Target) 설정
+- **소멸성 자산의 한계:** 항공업에서 빈 좌석으로 운항하는 것은 즉각적인 재고의 소실이며, 반대로 수요가 몰리는 성수기의 좌석 부족은 기회 손실(Spill)을 의미합니다.
+- **Target Leakage(데이터 누수) 방지:** 단순히 '총 여객 수(Volume)'를 예측할 경우, '공급(좌석 수)이 많으면 여객도 많다'는 기계적인 볼륨 패턴만 학습하는 함정에 빠집니다. 이를 방지하기 위해 **규모 변수들이 통제된 '탑승률(L/F)'을 핵심 예측 타깃으로 설정**했습니다.
+- **분석 목표:** 단순한 머신러닝 성능 극대화를 지양하고, **통계적 시계열 모델의 해석력(Interpretability)**과 **머신러닝 앙상블 모델의 예측력(Predictive Power)**을 다각도로 비교 검증합니다.
 
-## Planned Contents
-- Data description
-- Analysis
-- Results
-- Business insights
+---
 
-Started on: 2025-12-09
+## 2. 데이터 전처리 및 평가 지표 설계 (Data Preparation & Evaluation)
+실제 운항 데이터를 분석 환경에 맞게 정제하고, 통계적 원리에 기반하여 평가 지표를 직접 구현했습니다.
+
+* **결측치 및 이상치 정제:** 분모(총 공급)가 0이 되어 발생하는 ZeroDivision 오류 방지 및 비정상 운항 건 제거.
+* **탑승률(L/F) 캡핑(Capping):** 오버부킹 및 유아 승객 탑승 등으로 인해 논리적 최댓값(100%)을 초과하는 이상치 데이터를 1.0으로 조정하여 모델의 편향 학습 방지.
+* **시간 기준 분할 (Chronological Split):** 무작위 분할(Random Split) 시 발생하는 미래 데이터가 과거를 예측하는 오류(Data Leakage)를 원천 차단하기 위해, **마지막 6개월을 미래(Test) 데이터로 분리하여 엄격하게 검증**했습니다.
+* **평가 지표 (RMSE, MAE, R2) 하드코딩:** `sklearn.metrics`에 의존하지 않고, 수학적 공식에 기반하여 `Numpy`로 평가 지표 연산 함수를 직접 구현했습니다.
+
+---
+
+## 3. 탐색적 데이터 분석 (EDA) 및 비즈니스 인사이트
+* **지역별 L/F 분포 및 편차 (Boxplot):** SEA(동남아), JPN(일본) 노선의 안정적인 캐시카우(Cash Cow) 역할 확인 및 CHN(중국), AFR(아프리카) 등 특수 노선의 넓은 변동성(Variance) 진단.
+* **노선 효율성 (Scatter Plot):** 총 공급 대비 여객 수 산점도를 통해 특정 지역(JPN 등)의 100% L/F 근접 효율성 스펙트럼 시각화.
+* **상관관계 및 항공 스케줄링 구조 파악 (Heatmap & Scatter Matrix):** 공급/운항/여객 변수 간의 다중공선성을 확인하고, 항공 도메인 특유의 데일리 운항(주 7회, 14회 등)으로 인해 발생하는 '선형적 군집(Band) 패턴'을 도출해냈습니다.
+
+---
+
+## 4. 모델링 전략 (Modeling Strategy)
+데이터의 세분화 수준(Granularity)에 따라 투트랙(Two-Track) 전략을 채택하여 분석을 수행했습니다.
+
+### 1) 해석적 측면 (Interpretability): 집계된 시계열 데이터 추세 분석
+* **모델:** **ARIMA (AutoRegressive Integrated Moving Average)**
+* **접근:** 노선별 노이즈를 상쇄하기 위해 월별 평균 탑승률(Macro)로 통합하여 전체적인 시장의 추세와 계절성 파악.
+* **결과:** 오차율(RMSE) 0.0166 수준의 높은 안정성을 보였으며, 내부 연산 과정을 알 수 없는 머신러닝과 달리 향후 수요 증가세의 근거를 논리적으로 설명할 수 있는 해석적 우위를 증명했습니다.
+
+### 2) 예측력 측면 (Predictive Power): 세분화된 데이터의 앙상블 학습
+* **모델:** **Decision Tree ➡️ Random Forest (Bagging) ➡️ XGBoost (Boosting)**
+* **배깅(Bagging)의 분산 감소 증명:** 세부 노선(Micro) 데이터의 특성상 이상치와 노이즈가 빈번합니다. 단일 트리가 훈련 데이터에 심하게 과적합(Overfitting)되어 높은 오차를 보인 반면, **Random Forest는 다수 트리의 결과를 평균 내어 분산(Variance)을 획기적으로 낮추고 성능을 안정화하는 것을 수치로 증명**했습니다.
+
+---
+
+## 5. 최종 결론 및 Next Step
+* **최종 예측 모델 선정:** 부스팅(XGBoost) 모델이 배깅(Random Forest) 대비 근소하게 높은 설명력(R2)을 보였으나 그 차이가 미미했습니다. 항공 수요와 같이 돌발 변수와 노이즈가 많은 비즈니스 환경에서는 과적합에 민감한 부스팅보다 **노이즈에 강건하고(Robust) 결과 변동성이 적은 배깅 기반의 Random Forest를 최종 모델로 채택**하는 것이 합리적이라고 판단했습니다.
+
+**Next Step: Feature Engineering 방향성 제안**
+현재의 베이스라인 모델을 넘어 예측력을 한 단계 고도화하기 위해 다음 파생 변수의 도입이 필요합니다.
+1. **방향성(Direction) 분리:** 출국(Out)과 입국(In) 데이터의 Long Form 변환 및 계절성 독립 학습.
+2. **항공사 타입 세분화:** FSC(대형항공사)와 LCC(저비용항공사) 여부에 따른 탑승률 방어력 차이 파생 변수화.
+3. **외부 변수 결합:** 요일 특성(주말/평일), 유류할증료(운임), 경쟁사 시장 점유율 등 결합.
